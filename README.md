@@ -1,72 +1,80 @@
-# TrafficLens — Agent Skill for API Performance & Traffic Profiling
+<div align="center">
+
+# 🚦 TrafficLens
+
+**AI-powered API operations & traffic profiling skill for coding agents.**  
+Auto-detects backend endpoints, runs controlled AutoCannon benchmarks, and diagnoses latency regressions.
 
 [![skills.sh](https://skills.sh/b/hemanshulabs/trafficlens)](https://skills.sh/hemanshulabs/trafficlens)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Runtime: Pure Node.js](https://img.shields.io/badge/Runtime-Node.js%2018%2B-brightgreen.svg)]()
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Runtime: Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-green.svg)]()
+[![Dependencies: 0](https://img.shields.io/badge/dependencies-0-brightgreen.svg)]()
 
-> **Turn API traffic into instant root-cause diagnoses.** An installable Agent Skill for **Claude Code**, **Cursor**, **Codex**, **Gemini CLI**, and **OpenCode**. Triggered with `/api-traffic`.
+[Installation](#-quick-install) • [How to Use](#-usage) • [Supported Frameworks](#-supported-frameworks) • [Architecture](#-architecture)
 
----
-
-## ⚡ What is TrafficLens?
-
-Instead of manually crafting `curl` loops or parsing giant load-test outputs, TrafficLens gives your AI coding assistant an automated, hands-on operational runbook:
-
-1. 🔍 **Auto-detects API routes** across popular frameworks (Express, Fastify, Next.js App & Pages Router, NestJS, Hono, Koa).
-2. ⚡ **Runs safe, controlled AutoCannon benchmarks** against active local endpoints.
-3. 📊 **Measures latency percentiles** ($p50$, $p95$, $p99$), throughput ($RPS$), and error rates.
-4. 🛠️ **Delivers actionable diagnostics** directly in chat with root-cause identification and code-level fixes (< 400 tokens).
+</div>
 
 ---
 
-## 🚀 Quick Install (30 Seconds)
+## ⚡ Overview
 
-### Option 1: Vercel Skills (`skills.sh`) — Recommended for All Agents
-Works with **Claude Code**, **Cursor**, **GitHub Copilot**, **Codex**, and **OpenCode**:
+When building and testing APIs, developers often struggle to catch performance regressions before deployment. **TrafficLens** transforms your existing AI coding agent (**Claude Code**, **Cursor**, **Codex**, **Gemini CLI**, or **OpenCode**) into an automated performance engineer:
+
+* 🔍 **Automated Route Discovery**: Extracts backend endpoints and HTTP methods across your codebase without manual configuration.
+* ⚡ **Safe Development Load Testing**: Runs controlled, lightweight benchmarks using AutoCannon (default: 10 connections, 10s per route).
+* 📊 **Latency Percentiles ($p50$, $p95$, $p99$)**: Measures throughput ($RPS$), status distributions, and error budgets.
+* 🛠️ **Actionable Root-Cause Analysis**: Flags SLO violations ($p95 > 200\text{ms}$) and provides file-level fix suggestions in under 400 tokens.
+
+---
+
+## 🚀 Quick Install
+
+### Option 1: Vercel Skills (`skills.sh`) — Recommended
+
+Install into your project or globally across all supported coding agents:
 
 ```bash
 npx skills@latest add hemanshulabs/trafficlens
 ```
 
-### Option 2: Claude Code Native Plugin
+### Option 2: Claude Code Plugin
 
-Install via the Claude Code CLI:
+Install directly via the Claude Code CLI:
 
 ```bash
 claude plugins install trafficlens-skills
 ```
 
-Or run directly inside an active Claude Code conversation:
+Or execute within an active Claude Code conversation:
 
-```
+```text
 /plugin install trafficlens-skills
 ```
 
 ---
 
-## 💻 How to Use
+## 💻 Usage
 
-Start your local backend development server (e.g. `npm run dev`), then ask your agent:
+Ensure your local backend development server is running (e.g., `npm run dev`), then trigger the skill:
 
 ```text
-> /api-traffic
+/api-traffic
 ```
 
-You can also invoke it conversationally:
-* *"Benchmark my API routes and find slow endpoints"*
-* *"Run a load test against checkout"*
+You can also prompt your agent naturally:
+* *"Benchmark my API routes and find any slow endpoints."*
+* *"Run a load test against the checkout service."*
 * *"Are there any endpoints exceeding our 200ms latency budget?"*
 
 ---
 
-## 📋 Example Report
+## 📊 Sample Report
 
-When triggered, your agent will execute the background test and present a concise summary:
+When invoked, TrafficLens evaluates your active server and generates a structured operational report:
 
-```markdown
-## 🚦 TrafficLens API Performance Report
+### TrafficLens API Performance Report
 
-**Target:** `http://localhost:3000` | **Routes Tested:** 5 | **Load:** 10 conns (10s/route)
+**Target:** `http://localhost:3000` | **Routes Tested:** 5 | **Load:** 10 connections (10s / route)
 
 | Route | Method | RPS | p50 | p95 | p99 | Errors | Status |
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -76,83 +84,88 @@ When triggered, your agent will execute the background test and present a concis
 | `/api/search` | `POST` | 310 | 45ms | 110ms | 185ms | 0 | ✅ Healthy |
 | `/api/checkout` | `POST` | 3 | 2.6s | 2.8s | 3.1s | 1 | 🔴 Slow |
 
-### ⚠️ Bottlenecks & Fix Recommendations
+### ⚠️ Diagnostic Findings & Recommendations
 
-* **🔴 `POST /api/checkout`** — p95 2800ms exceeds 500ms SLO (+460%)
-  * *Root cause:* Synchronous blocking payment wait or unindexed database query.
-  * *Fix:* Move order fulfillment to a background worker or add an index on the orders table.
-* **🟡 `GET /api/config`** — High repetition static response.
-  * *Recommendation:* Add HTTP `Cache-Control: public, max-age=60` to save up to 80% database load.
-```
+* **🔴 `POST /api/checkout`** — Latency $p95 = 2.8\text{s}$ exceeds $500\text{ms}$ SLO (+460%)
+  * **Probable Cause:** Synchronous blocking payment processing or unindexed database query.
+  * **Remediation:** Move order fulfillment to a background task queue or add an index on order lookups.
+* **🟡 `GET /api/config`** — High response repetition detected.
+  * **Remediation:** Add HTTP `Cache-Control: public, max-age=60` headers to eliminate redundant database hits.
 
 ---
 
-## 🏗️ Architecture & How It Works
+## 🧩 Supported Frameworks
+
+TrafficLens automatically detects route definitions and mount paths across major Node.js / TypeScript backend frameworks:
+
+| Framework | Detection Method | Supported Patterns |
+| :--- | :--- | :--- |
+| **Express & Koa** | Router & AST Analysis | `app.get()`, `router.post()`, `app.use('/api', router)` |
+| **Next.js (App Router)** | File-system routing | `app/api/**/route.ts` (GET, POST, PUT, DELETE exports) |
+| **Next.js (Pages Router)**| File-system routing | `pages/api/**/*.ts` (handler functions) |
+| **Fastify & Hono** | Route declaration | `fastify.get()`, `app.post()` |
+| **NestJS** | Controller decorators | `@Get()`, `@Post()`, `@Controller('/path')` |
+| **Remix & SvelteKit** | Server loaders & endpoints | `routes/**/*.server.ts`, `+server.ts` |
+
+---
+
+## 🏗️ Architecture
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor Dev as Developer
-    participant Agent as Coding Agent (Claude/Cursor/Codex)
-    participant Engine as TrafficLens Engine (quick-scan.js)
-    participant API as Local API Server
+    participant Agent as AI Coding Agent
+    participant Engine as quick-scan.js
+    participant API as Local Dev Server
 
     Dev->>Agent: /api-traffic
-    Agent->>Engine: Run quick-scan.js
-    Engine->>Engine: 1. Auto-check & install autocannon if missing
-    Engine->>Engine: 2. Scan project files (AST/Regex) & resolve mounted routes
-    Engine->>API: 3. Health ping (auto-detects port 3000, 3001, 8000, etc.)
-    Engine->>API: 4. Controlled AutoCannon benchmark (10 conns, 10s)
-    API-->>Engine: Stream latency & status code metrics
-    Engine->>Engine: 5. Evaluate against SLOs (p95 < 200ms, error budget < 5%)
-    Engine-->>Agent: Formatted markdown table & targeted recommendations
-    Agent-->>Dev: Compact report with code-level fixes (<400 tokens)
+    Agent->>Engine: Execute quick-scan.js
+    Engine->>Engine: 1. Verify / install AutoCannon
+    Engine->>Engine: 2. Scan project AST & resolve mounted routes
+    Engine->>API: 3. Ping local port (3000, 3001, 8000, etc.)
+    Engine->>API: 4. Run controlled benchmark (10 conns, 10s)
+    API-->>Engine: Raw Latency / RPS / Error telemetry
+    Engine->>Engine: 5. Evaluate against SLOs (p95 < 200ms)
+    Engine-->>Agent: Compact summary table & root-cause insights
+    Agent-->>Dev: Clean operational diagnosis (<400 tokens)
 ```
 
 ---
 
-## 📂 Skill Repository Structure
+## 📂 Repository Structure
 
 ```text
 Trafficlens/
 ├── .claude-plugin/
-│   ├── plugin.json                 # Claude Code plugin manifest
-│   └── marketplace.json            # Plugin marketplace catalog
+│   ├── plugin.json                 # Claude Code plugin definition
+│   └── marketplace.json            # Plugin marketplace metadata
 ├── skills/
 │   └── api-traffic/
-│       ├── SKILL.md                # Main skill runbook (Phases 1–4)
+│       ├── SKILL.md                # Operational runbook (Phases 1–4)
 │       ├── agents/
-│       │   └── openai.yaml         # Codex CLI interface metadata
+│       │   └── openai.yaml         # Codex CLI interface configuration
 │       ├── scripts/
-│       │   ├── quick-scan.js       # Fast, zero-dep discovery & benchmark runner
-│       │   ├── discover-routes.js  # Framework router parser (Express, Next.js, etc.)
-│       │   └── run-analysis.js     # Standalone AutoCannon result evaluator
+│       │   ├── quick-scan.js       # All-in-one discovery & benchmark runner
+│       │   ├── discover-routes.js  # AST route parser
+│       │   └── run-analysis.js     # Benchmark evaluator
 │       └── references/
-│           └── detection-rules.md  # Production SLO guidelines & cache formulas
-├── SKILL.md                        # Root skill manifest for direct repo installations
-├── README.md                       # Documentation & setup guide
-├── LICENSE                         # MIT License
-└── package.json                    # Minimal package metadata (Zero runtime npm dependencies)
+│           └── detection-rules.md  # Production SLO baselines & formulas
+├── skills.sh.json                  # Vercel skills.sh grouping configuration
+├── SKILL.md                        # Root skill manifest for direct installs
+├── package.json                    # Package metadata (0 runtime npm dependencies)
+├── README.md                       # Documentation
+└── LICENSE                         # MIT License
 ```
 
 ---
 
 ## 🛡️ Operational Safeguards
 
-* **Zero Runtime Dependencies:** Built entirely with Node.js standard modules (`node:fs`, `node:path`, `node:child_process`). Runs instantly on any machine with Node.js 18+.
-* **Safe Concurrency:** Default benchmarks use lightweight concurrency (`10 connections`, `10 seconds`) to protect local development databases and services.
-* **Strict Secret Redaction:** All Authorization tokens, session cookies, API keys, and sensitive payload values are automatically sanitized and output as `<REDACTED>`.
-* **Zero Infrastructure Mutation:** The skill is strictly read-only and analytical.
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! If you'd like to add support for additional backend frameworks or custom detection heuristics:
-
-1. Fork this repository.
-2. Add route extraction patterns to `skills/api-traffic/scripts/discover-routes.js`.
-3. Submit a pull request.
+* **Zero Runtime Dependencies**: Written entirely in native Node.js standard modules (`node:fs`, `node:path`, `node:child_process`). Runs instantly on any system with Node.js 18+.
+* **Safe Local Concurrency**: Default load tests run with minimal concurrency (`10 connections`, `10 seconds`) to avoid exhausting local database connection pools.
+* **Secret Redaction**: Authorization headers, cookies, API keys, and sensitive tokens are automatically masked as `<REDACTED>`.
+* **Read-Only**: The skill never modifies application source code without explicit user confirmation.
 
 ---
 

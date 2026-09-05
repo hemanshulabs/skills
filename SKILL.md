@@ -5,84 +5,90 @@ description: "Profile and benchmark API endpoints using autocannon. Diagnoses sl
 
 # TrafficLens: API Traffic & Performance Benchmark
 
-An operational engineering discipline for profiling APIs and catching performance regressions before production.
+An automated operational discipline for profiling backend APIs, detecting latency regressions, and validating service-level objectives (SLOs) before production.
 
-## Redact
+## Secret Redaction
 
-Always redact credentials, authorization headers, API keys, and sensitive tokens. Output `<REDACTED>` in place of any secret.
+Always redact sensitive values in captured outputs. Replace API keys, bearer tokens, passwords, and session cookies with `<REDACTED>`.
 
 ---
 
-## Phase 1: Verify Environment & Active Server
+## Phase 1: Environment & Server Verification
 
-1. **Ensure `autocannon` is installed**:
+1. **Verify AutoCannon**:
+   Ensure `autocannon` is installed and ready on the system:
    ```bash
    npx autocannon --version 2>/dev/null || npm install -g autocannon
    ```
-2. **Confirm target API server**:
-   Check if the API server is already running locally (standard ports: `3000`, `3001`, `8000`, `8080`, `5000`, `4000`).
-   * If unreachable, stop and tell the user:
-     > "Local API server not detected. Start your development server (e.g. `npm run dev`), then run `/api-traffic`."
+
+2. **Verify Active API Server**:
+   Verify that the target API server is running locally (probes `http://localhost:3000`, `3001`, `8000`, `8080`, `5000`, `4000`):
+   * If no server responds, prompt the user:
+     > "No active local server detected. Please start your backend development server (e.g., `npm run dev`) and re-run `/api-traffic`."
 
 ---
 
-## Phase 2: Discover & Read API Routes
+## Phase 2: Route Discovery
 
-Extract all defined HTTP endpoints in the project:
-* **Automated Runner**:
-  Execute the bundled helper from the skill directory or project root:
-  ```bash
-  node scripts/quick-scan.js
-  # Or if executing from project root:
-  node skills/api-traffic/scripts/quick-scan.js
-  ```
-* **Framework Coverage**:
-  The discovery engine detects Express, Fastify, Next.js (App & Pages router), NestJS decorators, Hono, Koa, and Remix route modules.
-* **Manual Inspection**:
-  If needed, inspect route files in `src/routes/`, `routes/`, or `app/api/` to identify parameter shapes and HTTP methods (`GET`, `POST`, `PUT`, `DELETE`).
+Extract all defined backend API endpoints across the codebase:
+
+1. **Automated Discovery**:
+   Run the bundled scanner from the project:
+   ```bash
+   node scripts/quick-scan.js
+   # Or from repository root:
+   node skills/api-traffic/scripts/quick-scan.js
+   ```
+
+2. **Supported Frameworks**:
+   * **Express & Koa**: `app.get()`, `router.post()`, router mount prefixes (`app.use('/api/...')`).
+   * **Next.js**: App Router (`app/api/**/route.ts`) and Pages Router (`pages/api/**/*.ts`).
+   * **NestJS**: Controller route decorators (`@Get()`, `@Post()`, `@Controller()`).
+   * **Fastify & Hono**: Route definitions (`fastify.get()`, `app.post()`).
 
 ---
 
-## Phase 3: Execute Controlled Benchmark
+## Phase 3: Controlled Benchmark
 
-Run autocannon against discovered routes with safe development concurrency (default: 10 connections, 10s per route):
-* **Read Endpoints (`GET`):**
+Execute load testing against active endpoints with lightweight, safe concurrency:
+
+* **Default Load**: `10 connections`, `10 seconds per route`.
+* **Read Requests (`GET`)**:
   ```bash
   npx autocannon -c 10 -d 10 --json "http://localhost:<port><path>"
   ```
-* **Write Endpoints (`POST`/`PUT`/`PATCH`):**
-  Include JSON content-type and a realistic mock payload:
+* **Write Requests (`POST`, `PUT`, `PATCH`)**:
+  Include JSON content-type and a realistic fixture body:
   ```bash
-  npx autocannon -c 10 -d 10 -m POST -H "content-type: application/json" -b '{"query":"test","items":[{"id":"1","qty":1}]}' --json "http://localhost:<port><path>"
+  npx autocannon -c 10 -d 10 -m POST -H "content-type: application/json" -b '{"test":true}' --json "http://localhost:<port><path>"
   ```
 
 ---
 
 ## Phase 4: Operational Diagnostics & Reporting
 
-Evaluate the results against production SLO targets:
-* **Latency SLO:** p95 < 200ms (Healthy), 200ms–500ms (Warning), > 500ms (Critical Regression).
-* **Error Budget:** Error rate > 5% or non-zero timeouts is Critical.
-* **Cache Opportunity:** Static GET endpoints with high repetition should leverage `Cache-Control: max-age=60`.
+Evaluate performance against operational targets:
+* **Latency SLO**: $p95 < 200\text{ms}$ is healthy. $p95 > 500\text{ms}$ is a critical regression.
+* **Error Budget**: Error rates $> 5\%$ or non-zero timeouts require immediate investigation.
+* **Cache Opportunities**: Endpoints returning identical static responses should suggest HTTP caching (`Cache-Control: public, max-age=60`).
 
-### Completion Criterion
-Produce a compact, high-density markdown summary:
+---
 
-```markdown
-## 🚦 TrafficLens API Performance Report
+### Completion Criteria
 
-**Target:** `http://localhost:3000` | **Routes Tested:** <count> | **Load:** 10 conns (10s/route)
+Phase 4 is complete when you present a clean, concise operational summary adhering to the following structure:
 
+#### Summary Table
 | Route | Method | RPS | p50 | p95 | p99 | Errors | Status |
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | `/api/products` | `GET` | 2,410 | 2ms | 6ms | 11ms | 0 | ✅ Healthy |
 | `/api/checkout` | `POST` | 3 | 2.6s | 2.8s | 3.1s | 1 | 🔴 Slow |
 
-### ⚠️ Bottlenecks & Fix Recommendations
+#### Diagnostic Findings (Flagged Routes Only)
+* **🔴 `POST /api/checkout`** — Latency $p95 = 2.8\text{s}$ exceeds $500\text{ms}$ SLO (+460%)
+  * *Root Cause:* Synchronous blocking I/O, heavy computation, or unindexed database queries.
+  * *Remediation:* Defer processing to a background worker queue or add an index on order lookups.
+* **🟡 `GET /api/config`** — High response repetition detected.
+  * *Remediation:* Apply HTTP `Cache-Control: public, max-age=60` to reduce backend query overhead.
 
-* **🔴 `POST /api/checkout`** — p95 2800ms exceeds 500ms SLO (+460%)
-  * *Root cause:* Synchronous blocking I/O, slow database queries, or unindexed lookups.
-  * *Fix:* Add database index on lookup column or wrap in background task queue.
-```
-
-*Rule: Keep the final output under 400 tokens. Lead with the table, highlight only problematic routes, and skip verbose prose for healthy routes.*
+> **Token Limit**: Keep total response strictly under 400 tokens. Omit verbose explanations for healthy endpoints.
