@@ -9,7 +9,8 @@
  * Output: Structured markdown report with findings
  */
 
-import { execSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
+import { sanitizeRoutePath, buildSafeTargetUrl, resolveAutoCannon, redactSecrets } from './security.js';
 
 // Parse CLI args
 const args = process.argv.slice(2);
@@ -20,31 +21,62 @@ let inputFile = null;
 
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--base-url' && args[i + 1]) { baseUrl = args[++i]; }
-  else if (args[i] === '--connections' && args[i + 1]) { connections = parseInt(args[++i]); }
-  else if (args[i] === '--duration' && args[i + 1]) { duration = parseInt(args[++i]); }
+  else if (args[i] === '--connections' && args[i + 1]) { connections = parseInt(args[++i], 10); }
+  else if (args[i] === '--duration' && args[i + 1]) { duration = parseInt(args[++i], 10); }
   else if (!args[i].startsWith('--')) { inputFile = args[i]; }
 }
 
 // Read routes from file or stdin
 let routesData;
-if (inputFile) {
-  const { readFileSync } = await import('node:fs');
-  routesData = JSON.parse(readFileSync(inputFile, 'utf-8'));
-} else {
-  // Read from stdin
-  const chunks = [];
-  for await (const chunk of process.stdin) chunks.push(chunk);
-  routesData = JSON.parse(Buffer.concat(chunks).toString());
+try {
+  if (inputFile) {
+    const { readFileSync } = await import('node:fs');
+    routesData = JSON.parse(readFileSync(inputFile, 'utf-8'));
+  } else {
+    // Read from stdin
+    const chunks = [];
+    for await (const chunk of process.stdin) chunks.push(chunk);
+    routesData = JSON.parse(Buffer.concat(chunks).toString());
+  }
+} catch (err) {
+  console.error(`❌ Failed to parse routes input: ${redactSecrets(err.message)}`);
+  process.exit(1);
 }
 
-const routes = routesData.routes || routesData;
+const rawRoutes = Array.isArray(routesData) ? routesData : (routesData.routes || []);
+const VALID_METHODS = new Set(['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']);
 
-// Ensure autocannon is available
-try {
-  execSync('npx autocannon --version', { stdio: 'ignore' });
-} catch {
-  console.error('autocannon not found. Installing...');
-  execSync('npm install -g autocannon', { stdio: 'inherit' });
+// Sanitize all ingested routes to prevent command injection & indirect injection
+const routes = [];
+for (const r of rawRoutes) {
+  if (!r || typeof r.path !== 'string') continue;
+  const safePath = sanitizeRoutePath(r.path);
+  if (!safePath) {
+    console.error(`⚠️ Skipping invalid/unsafe route path: ${JSON.stringify(r.path)}`);
+    continue;
+  }
+  const method = typeof r.method === 'string' ? r.method.toUpperCase() : 'GET';
+  if (!VALID_METHODS.has(method)) {
+    console.error(`⚠️ Skipping unsupported HTTP method: ${JSON.stringify(r.method)}`);
+    continue;
+  }
+  routes.push({ ...r, method, path: safePath });
+}
+
+if (routes.length === 0) {
+  console.error('⚠️ No valid routes found to analyze.');
+  process.exit(0);
+}
+
+// Ensure autocannon is available without unprompted remote package installation
+const autoCannonRunner = resolveAutoCannon(process.cwd());
+if (!autoCannonRunner) {
+  console.error('❌ [TrafficLens] AutoCannon is required for benchmarking but was not found on your system.');
+  console.error('Please install it manually before running the analysis:');
+  console.error('  npm install -g autocannon');
+  console.error('or add it to your project devDependencies:');
+  console.error('  npm install --save-dev autocannon');
+  process.exit(1);
 }
 
 // Thresholds
@@ -56,34 +88,53 @@ const THRESHOLDS = {
 };
 
 /**
- * Run autocannon against a single route
+ * Run autocannon against a single route with zero shell interpolation
  */
 function runRoute(route) {
-  const url = `${baseUrl}${route.path}`;
+  let targetUrl;
+  try {
+    targetUrl = buildSafeTargetUrl(baseUrl, route.path);
+  } catch (err) {
+    return { error: redactSecrets(err.message), route };
+  }
+
   const method = (route.method || 'GET').toUpperCase();
-  
-  let cmd = `npx autocannon -c ${connections} -d ${duration} --json`;
-  
+  const autocannonArgs = [
+    ...autoCannonRunner.args,
+    '-c', String(connections),
+    '-d', String(duration),
+    '--json'
+  ];
+
   if (method !== 'GET') {
-    cmd += ` -m ${method}`;
-    cmd += ` -H "content-type: application/json"`;
-    // Provide a minimal body for write methods
+    autocannonArgs.push('-m', method);
+    autocannonArgs.push('-H', 'content-type: application/json');
     if (['POST', 'PUT', 'PATCH'].includes(method)) {
-      cmd += ` -b '${JSON.stringify({ test: true })}'`;
+      autocannonArgs.push('-b', JSON.stringify({ test: true }));
     }
   }
-  
-  cmd += ` "${url}"`;
+
+  autocannonArgs.push(targetUrl);
 
   try {
-    const output = execSync(cmd, { 
-      encoding: 'utf-8', 
+    const proc = spawnSync(autoCannonRunner.exe, autocannonArgs, {
+      encoding: 'utf-8',
       timeout: (duration + 15) * 1000,
-      stdio: ['pipe', 'pipe', 'pipe']
+      shell: false,
+      maxBuffer: 10 * 1024 * 1024
     });
-    return JSON.parse(output);
+
+    if (proc.error) {
+      return { error: redactSecrets(proc.error.message), route };
+    }
+
+    if (proc.status !== 0 && !proc.stdout) {
+      return { error: redactSecrets(proc.stderr || `Process exited with code ${proc.status}`), route };
+    }
+
+    return JSON.parse(proc.stdout);
   } catch (err) {
-    return { error: err.message, route };
+    return { error: redactSecrets(err.message), route };
   }
 }
 
@@ -97,8 +148,8 @@ function analyze(result, route) {
       status: '❌ Error',
       severity: 'critical',
       rps: 0, p50: 0, p95: 0, p99: 0,
-      errors: 0, timeouts: 0,
-      issues: [`Connection failed: ${result.error}`],
+      errors: 1, timeouts: 0,
+      issues: [`Connection failed: ${redactSecrets(String(result.error))}`],
     };
   }
 

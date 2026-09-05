@@ -14,7 +14,8 @@
 
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, extname, relative } from 'node:path';
-import { execSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
+import { sanitizeRoutePath, buildSafeTargetUrl, resolveAutoCannon, redactSecrets } from './security.js';
 
 // ── Argument Parsing ──
 const args = process.argv.slice(2);
@@ -30,23 +31,17 @@ for (let i = 0; i < args.length; i++) {
   else if (args[i] === '--duration' && args[i + 1]) duration = parseInt(args[++i], 10);
 }
 
-// ── Step 1: Ensure AutoCannon is Installed ──
+// ── Step 1: Ensure AutoCannon is Available (Without Unprompted Remote Installation) ──
+let autoCannonRunner = null;
 function ensureAutoCannon() {
-  try {
-    execSync('npx autocannon --version', { stdio: 'ignore', timeout: 8000 });
-  } catch {
-    console.error('⚙️ [TrafficLens] AutoCannon not detected. Installing globally...');
-    try {
-      execSync('npm install -g autocannon', { stdio: 'inherit', timeout: 60000 });
-    } catch {
-      console.error('⚙️ [TrafficLens] Global install failed. Installing as local dev dependency...');
-      try {
-        execSync('npm install --save-dev autocannon', { cwd: projectRoot, stdio: 'inherit', timeout: 60000 });
-      } catch (err) {
-        console.error(`❌ Failed to install autocannon: ${err.message}`);
-        process.exit(1);
-      }
-    }
+  autoCannonRunner = resolveAutoCannon(projectRoot);
+  if (!autoCannonRunner) {
+    console.error('❌ [TrafficLens] AutoCannon is required for benchmarking but was not found on your system.');
+    console.error('Please install it manually before running the benchmark:');
+    console.error('  npm install -g autocannon');
+    console.error('or add it to your project devDependencies:');
+    console.error('  npm install --save-dev autocannon');
+    process.exit(1);
   }
 }
 
@@ -153,11 +148,12 @@ function discoverRoutes() {
           }
         }
 
-        if (fullPath.startsWith('/') && !fullPath.includes('*')) {
-          const key = `${method}:${fullPath}`;
+        let safeFullPath = sanitizeRoutePath(fullPath);
+        if (safeFullPath && !safeFullPath.includes('*')) {
+          const key = `${method}:${safeFullPath}`;
           if (!seen.has(key)) {
             seen.add(key);
-            routes.push({ method, path: fullPath, file: relative(projectRoot, file), line });
+            routes.push({ method, path: safeFullPath, file: relative(projectRoot, file), line });
           }
         }
       }
@@ -180,6 +176,9 @@ function discoverRoutes() {
       routePath = routePath.replace(/\[([^\]]+)\]/g, ':$1');
       if (!routePath.startsWith('/api')) routePath = '/api' + routePath;
 
+      const safeFileRoute = sanitizeRoutePath(routePath);
+      if (!safeFileRoute) continue;
+
       let content = '';
       try { content = readFileSync(file, 'utf-8'); } catch {}
 
@@ -191,10 +190,10 @@ function discoverRoutes() {
       if (detectedMethods.length === 0) detectedMethods.push('GET');
 
       for (const method of detectedMethods) {
-        const key = `${method}:${routePath}`;
+        const key = `${method}:${safeFileRoute}`;
         if (!seen.has(key)) {
           seen.add(key);
-          routes.push({ method, path: routePath, file: relative(projectRoot, file), line: 1 });
+          routes.push({ method, path: safeFileRoute, file: relative(projectRoot, file), line: 1 });
         }
       }
     }
@@ -225,16 +224,25 @@ async function detectActiveServer(candidateUrl) {
   return null;
 }
 
-// ── Step 4: Run AutoCannon & Analyze ──
+// ── Step 4: Run AutoCannon & Analyze (Zero Shell Interpolation) ──
 function runAutoCannon(baseUrl, route) {
-  // Replace dynamic route params (e.g., :id -> 1)
-  const resolvedPath = route.path.replace(/:[a-zA-Z0-9_]+/g, '1');
-  const target = `${baseUrl}${resolvedPath}`;
-  const method = route.method.toUpperCase();
+  let target;
+  try {
+    target = buildSafeTargetUrl(baseUrl, route.path);
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
 
-  let cmd = `npx autocannon -c ${connections} -d ${duration} --json`;
+  const method = route.method.toUpperCase();
+  const autocannonArgs = [
+    ...autoCannonRunner.args,
+    '-c', String(connections),
+    '-d', String(duration),
+    '--json'
+  ];
+
   if (method !== 'GET') {
-    cmd += ` -m ${method}`;
+    autocannonArgs.push('-m', method);
     if (['POST', 'PUT', 'PATCH'].includes(method)) {
       const mockBody = JSON.stringify({
         query: 'search query',
@@ -242,22 +250,31 @@ function runAutoCannon(baseUrl, route) {
         paymentMethod: 'card',
         test: true
       });
-      // Escape for command line
-      const escapedBody = mockBody.replace(/"/g, '\\"');
-      cmd += ` -H "content-type: application/json" -b "${escapedBody}"`;
+      autocannonArgs.push('-H', 'content-type: application/json');
+      autocannonArgs.push('-b', mockBody);
     }
   }
-  cmd += ` "${target}"`;
+  autocannonArgs.push(target);
 
   try {
-    const rawOutput = execSync(cmd, {
+    const proc = spawnSync(autoCannonRunner.exe, autocannonArgs, {
       encoding: 'utf-8',
-      timeout: (duration + 10) * 1000,
-      stdio: ['pipe', 'pipe', 'pipe']
+      timeout: (duration + 15) * 1000,
+      shell: false,
+      maxBuffer: 10 * 1024 * 1024
     });
-    return { ok: true, data: JSON.parse(rawOutput) };
+
+    if (proc.error) {
+      return { ok: false, error: redactSecrets(proc.error.message) };
+    }
+
+    if (proc.status !== 0 && !proc.stdout) {
+      return { ok: false, error: redactSecrets(proc.stderr || `Process exited with status ${proc.status}`) };
+    }
+
+    return { ok: true, data: JSON.parse(proc.stdout) };
   } catch (err) {
-    return { ok: false, error: err.message };
+    return { ok: false, error: redactSecrets(err.message) };
   }
 }
 

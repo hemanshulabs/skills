@@ -12,6 +12,7 @@
 
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, extname, relative } from 'node:path';
+import { sanitizeRoutePath } from './security.js';
 
 const projectRoot = process.argv[2] || process.cwd();
 
@@ -90,11 +91,14 @@ function extractRoutes(filePath) {
     let match;
     while ((match = pattern.exec(content)) !== null) {
       const method = match[1].toUpperCase();
-      const path = match[2] || '/';
+      const rawPath = match[2] || '/';
+      const path = sanitizeRoutePath(rawPath);
+      if (!path) continue;
+
       const lineNum = content.substring(0, match.index).split('\n').length;
       const key = `${method}:${path}`;
       
-      if (!seen.has(key) && path.startsWith('/')) {
+      if (!seen.has(key)) {
         seen.add(key);
         routes.push({ method, path, file: relPath, line: lineNum });
       }
@@ -114,7 +118,7 @@ function discoverFileRoutes() {
     for (const file of files) {
       const rel = relative(fullDir, file);
       // Convert file path to route path
-      let routePath = '/' + rel
+      let rawRoutePath = '/' + rel
         .replace(/\\/g, '/')
         .replace(/\.(ts|js|tsx|jsx|mts|mjs)$/, '')
         .replace(/\/index$/, '')
@@ -123,12 +127,15 @@ function discoverFileRoutes() {
         .replace(/\.server$/, '');      // Remix
       
       // Convert [param] to :param
-      routePath = routePath.replace(/\[([^\]]+)\]/g, ':$1');
+      rawRoutePath = rawRoutePath.replace(/\[([^\]]+)\]/g, ':$1');
       
       // Prefix with /api if not already
-      if (!routePath.startsWith('/api')) {
-        routePath = '/api' + routePath;
+      if (!rawRoutePath.startsWith('/api')) {
+        rawRoutePath = '/api' + rawRoutePath;
       }
+
+      const routePath = sanitizeRoutePath(rawRoutePath);
+      if (!routePath) continue;
 
       const content = readFileSync(file, 'utf-8');
       const methods = [];

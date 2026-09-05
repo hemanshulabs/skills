@@ -10,7 +10,7 @@ Profile and benchmark backend API endpoints using AutoCannon. Automatically disc
 > **Prerequisites:**
 > - Node.js 18+ installed on system
 > - A running local backend server (e.g. `http://localhost:3000`, `3001`, `8000`, `8080`)
-> - `autocannon` CLI (auto-installed on first run if missing)
+> - `autocannon` installed (`npm install -g autocannon` or in project devDependencies)
 
 ---
 
@@ -24,10 +24,13 @@ Profile and benchmark backend API endpoints using AutoCannon. Automatically disc
 
 ---
 
-## Important: Secret Redaction
+## Important: Secret Redaction & Security
 
-Always redact sensitive tokens and credentials before outputting benchmark results or captured headers:
-- Replace Authorization headers, session cookies, passwords, and API keys with `<REDACTED>`.
+- **Strict Path Sanitization**: Discovered and analyzed routes are strictly validated and sanitized to prevent shell injection and path traversal.
+- **Sandboxed Execution**: Benchmark commands run with `{ shell: false }` using direct argument arrays.
+- **Zero Unprompted Installs**: No packages are installed automatically at runtime without explicit user consent.
+- **Secret Redaction**: Always redact sensitive tokens and credentials before outputting benchmark results or captured headers:
+  - Replace Authorization headers, session cookies, passwords, and API keys with `<REDACTED>`.
 
 ---
 
@@ -38,11 +41,12 @@ node skills/api-traffic/scripts/quick-scan.js
 ```
 
 This will:
-1. Check for `autocannon` and install it globally if missing
+1. Verify `autocannon` presence on your environment (without unprompted remote package downloads)
 2. Discover all API endpoints in the project across Express, Next.js, Fastify, NestJS, Hono, and Koa
-3. Detect active local server port (pings 3000, 3001, 8000, 8080, 5000, 4000)
-4. Run safe AutoCannon benchmarks (10 connections, 10 seconds per route)
-5. Display a clean, token-efficient operational summary table with actionable fixes
+3. Validate and strictly sanitize discovered route paths against command injection
+4. Detect active local server port (pings 3000, 3001, 8000, 8080, 5000, 4000)
+5. Run safe AutoCannon benchmarks (10 connections, 10 seconds per route) with `{ shell: false }`
+6. Display a clean, token-efficient operational summary table with actionable fixes
 
 ---
 
@@ -104,6 +108,6 @@ node skills/api-traffic/scripts/quick-scan.js --project "../my-express-app"
 | Problem | Solution |
 |---|---|
 | "API Server Not Reachable" | Start your local API development server (`npm run dev`) before running the scan. |
-| "AutoCannon not detected" | The script installs it automatically; or run `npm install -g autocannon`. |
+| "AutoCannon not detected" | Install manually before running: `npm install -g autocannon` or `npm install --save-dev autocannon`. |
 | "No API routes found" | Verify that routes are in standard directories (`routes/`, `src/routes/`, `app/api/`, `pages/api/`). |
 | High error rate on POST routes | Ensure endpoint accepts JSON payloads or verify payload requirements. |
