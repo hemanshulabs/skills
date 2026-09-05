@@ -1,5 +1,5 @@
 {
-  "name": "skills",
+  "name": "@hemanshulabs/skills",
   "version": "0.1.0",
   "description": "A collection of reusable skills for Claude Code, Cursor, Codex, and other coding agents — API traffic profiling, load testing, and latency bottleneck diagnosis.",
   "type": "module",
