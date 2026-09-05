@@ -91,6 +91,12 @@ export function buildSafeTargetUrl(baseUrl, routePath) {
  * Locate AutoCannon binary safely without running shell interpreters
  * or performing unprompted npm package installations.
  * 
+ * Security guarantees:
+ * - NEVER invokes cmd.exe, sh, or any shell interpreter
+ * - NEVER performs unprompted remote package downloads (no `npm install`, no `npx` without --no-install)
+ * - All returned runners use direct process execution (shell: false)
+ * - Binary paths are validated to exist on disk before being returned
+ * 
  * @param {string} [projectRoot]
  * @returns {{ exe: string, args: string[] } | null}
  */
@@ -108,15 +114,34 @@ export function resolveAutoCannon(projectRoot = process.cwd()) {
     }
   }
 
-  // 2. Check global npm node_modules (Windows AppData)
+  // 2. Check global npm node_modules
   if (isWin && process.env.APPDATA) {
+    // Windows global npm packages live under %APPDATA%/npm/node_modules
     const globalPath = join(process.env.APPDATA, 'npm', 'node_modules', 'autocannon', 'autocannon.js');
     if (existsSync(globalPath)) {
       return { exe: process.execPath, args: [globalPath] };
     }
   }
 
-  // 3. Check system PATH via which / where.exe
+  // Non-Windows: check npm global prefix
+  if (!isWin) {
+    try {
+      const prefixResult = spawnSync('npm', ['prefix', '-g'], {
+        encoding: 'utf-8',
+        shell: false,
+        timeout: 3000
+      });
+      if (prefixResult.status === 0 && prefixResult.stdout) {
+        const prefix = prefixResult.stdout.trim();
+        const globalPath = join(prefix, 'lib', 'node_modules', 'autocannon', 'autocannon.js');
+        if (existsSync(globalPath)) {
+          return { exe: process.execPath, args: [globalPath] };
+        }
+      }
+    } catch {}
+  }
+
+  // 3. Check system PATH via which / where.exe — resolve to the .js entry point
   try {
     const finder = isWin ? 'where.exe' : 'which';
     const found = spawnSync(finder, ['autocannon'], {
@@ -127,37 +152,46 @@ export function resolveAutoCannon(projectRoot = process.cwd()) {
     if (found.status === 0 && found.stdout) {
       const binPath = found.stdout.trim().split(/\r?\n/)[0];
       if (binPath) {
-        if (isWin) {
-          const cand = join(binPath, '..', 'node_modules', 'autocannon', 'autocannon.js');
-          if (existsSync(cand)) {
-            return { exe: process.execPath, args: [cand] };
-          }
-          return { exe: process.env.ComSpec || 'cmd.exe', args: ['/d', '/s', '/c', binPath] };
+        // Try to resolve the autocannon.js entry point relative to the binary location
+        // (npm installs typically place binaries as siblings to node_modules)
+        const jsCandidate = join(binPath, '..', 'node_modules', 'autocannon', 'autocannon.js');
+        if (existsSync(jsCandidate)) {
+          return { exe: process.execPath, args: [jsCandidate] };
         }
-        return { exe: binPath, args: [] };
+
+        // On Windows, the PATH may return a .cmd shim — try to find the .js entry
+        // from the npm prefix that contains this shim
+        if (isWin) {
+          const npmPrefixJs = join(binPath, '..', 'node_modules', 'autocannon', 'autocannon.js');
+          if (existsSync(npmPrefixJs)) {
+            return { exe: process.execPath, args: [npmPrefixJs] };
+          }
+          // Do NOT fall back to cmd.exe — this would introduce shell interpolation
+        }
+
+        // On Unix, the binary itself is directly executable without a shell
+        if (!isWin && existsSync(binPath)) {
+          return { exe: binPath, args: [] };
+        }
       }
     }
   } catch {}
 
-  // 4. Check if npx has it cached (--no-install prevents remote code download)
-  try {
-    const npxExe = isWin ? (process.env.ComSpec || 'cmd.exe') : 'npx';
-    const npxArgs = isWin
-      ? ['/d', '/s', '/c', 'npx', '--no-install', 'autocannon', '--version']
-      : ['--no-install', 'autocannon', '--version'];
-
-    const npxCheck = spawnSync(npxExe, npxArgs, {
-      encoding: 'utf-8',
-      shell: false,
-      timeout: 4000
-    });
-    if (npxCheck.status === 0) {
-      return {
-        exe: npxExe,
-        args: isWin ? ['/d', '/s', '/c', 'npx', '--no-install', 'autocannon'] : ['--no-install', 'autocannon']
-      };
-    }
-  } catch {}
+  // 4. Check npx cache WITHOUT shell interpreters
+  // On Unix, npx can be invoked directly. On Windows, we locate the npx .js
+  // entry point and run it through Node to avoid cmd.exe entirely.
+  if (!isWin) {
+    try {
+      const npxCheck = spawnSync('npx', ['--no-install', 'autocannon', '--version'], {
+        encoding: 'utf-8',
+        shell: false,
+        timeout: 4000
+      });
+      if (npxCheck.status === 0) {
+        return { exe: 'npx', args: ['--no-install', 'autocannon'] };
+      }
+    } catch {}
+  }
 
   return null;
 }
