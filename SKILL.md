@@ -5,7 +5,7 @@ description: Profile and benchmark API endpoints using autocannon. Diagnoses slo
 
 # Skill: API Traffic Analyzer
 
-Profile and benchmark backend API endpoints using AutoCannon. Automatically discover project routes, test active endpoints with controlled concurrency, measure latency percentiles ($p50$, $p95$, $p99$), and detect performance regressions.
+Profile and benchmark backend API endpoints using AutoCannon. Automatically discover project routes, test active endpoints with controlled concurrency, measure latency percentiles (p50, p95, p99), and detect performance regressions.
 
 > **Prerequisites:**
 > - Node.js 18+ installed on system
@@ -89,7 +89,7 @@ node skills/api-traffic/scripts/quick-scan.js --project "../my-express-app"
 
 ### Bottlenecks & Fix Recommendations (Flagged Routes Only)
 
-- **🔴 `POST /api/checkout`** — Latency $p95 = 2.8\text{s}$ exceeds $500\text{ms}$ SLO (+460%)
+- **🔴 `POST /api/checkout`** — Latency p95: 2.8s exceeds 500ms SLO (+460%)
   - *Root Cause:* Synchronous blocking payment wait or unindexed database query.
   - *Fix:* Move order fulfillment to a background task queue or add an index on the orders table.
 - **🟡 `GET /api/config`** — High response repetition detected.

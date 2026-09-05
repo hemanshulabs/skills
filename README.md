@@ -13,7 +13,7 @@ A collection of reusable skills for Claude Code, Cursor, Codex CLI, and other co
 
 | Skill | Description |
 |---|---|
-| [`api-traffic`](./skills/api-traffic/) | Profile and benchmark API endpoints using AutoCannon. Automatically discover backend routes, measure latency percentiles ($p50$, $p95$, $p99$), detect error spikes, and recommend code-level fixes. |
+| [`api-traffic`](./skills/api-traffic/) | Profile and benchmark API endpoints using AutoCannon. Automatically discover backend routes, measure latency percentiles (p50, p95, p99), detect error spikes, and recommend code-level fixes. |
 
 ---
 
