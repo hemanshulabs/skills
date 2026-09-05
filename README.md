@@ -2,9 +2,10 @@
 
 A collection of reusable skills for Claude Code, Cursor, Codex CLI, and other coding agents — automated API traffic profiling, load testing, and latency bottleneck diagnosis.
 
-[![skills.sh](https://www.skills.sh/hemanshulabs/trafficlens/api-traffic)](https://skills.sh/hemanshulabs/trafficlens)
+[![skills.sh](https://img.shields.io/badge/skills.sh-api--traffic-black?logo=vercel)](https://skills.sh/hemanshulabs/trafficlens/api-traffic)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Runtime: Node.js](https://img.shields.io/badge/Runtime-Node.js%2018%2B-green.svg)]()
+
 
 ## Available Skills
 
