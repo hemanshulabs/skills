@@ -1,0 +1,31 @@
+{
+  "name": "trafficlens",
+  "version": "0.1.0",
+  "description": "TrafficLens: AI-powered API traffic profiling, latency bottleneck diagnosis, and performance benchmarking agent skill.",
+  "type": "module",
+  "author": "TrafficLens Team",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/trafficlens/skills"
+  },
+  "license": "MIT",
+  "keywords": [
+    "agent-skill",
+    "skills",
+    "api-traffic",
+    "autocannon",
+    "load-testing",
+    "performance",
+    "benchmarking",
+    "claude-code",
+    "codex",
+    "cursor",
+    "opencode"
+  ],
+  "scripts": {
+    "test:scan": "node skills/api-traffic/scripts/quick-scan.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

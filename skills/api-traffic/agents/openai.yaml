@@ -1,0 +1,3 @@
+interface:
+  display_name: "API Traffic & Benchmark Analyzer"
+  short_description: "Profile endpoints, detect latency regressions, and diagnose slow routes"

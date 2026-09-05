@@ -1,0 +1,22 @@
+{
+  "name": "trafficlens-skills",
+  "version": "0.1.0",
+  "description": "TrafficLens: AI-powered API operations and load-testing skills. Profile endpoints, benchmark RPS/latency, diagnose slow bottlenecks, and detect caching opportunities.",
+  "author": {
+    "name": "TrafficLens Team"
+  },
+  "license": "MIT",
+  "keywords": [
+    "api",
+    "traffic",
+    "autocannon",
+    "load-testing",
+    "benchmarking",
+    "latency",
+    "performance",
+    "operations"
+  ],
+  "skills": [
+    "./skills/api-traffic"
+  ]
+}
