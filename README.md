@@ -1,6 +1,6 @@
 # TrafficLens — Agent Skill for API Performance & Traffic Profiling
 
-[![skills.sh](https://skills.sh/b/trafficlens/skills)](https://skills.sh/trafficlens/skills)
+[![skills.sh](https://skills.sh/b/hemanshulabs/trafficlens)](https://skills.sh/hemanshulabs/trafficlens)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Runtime: Pure Node.js](https://img.shields.io/badge/Runtime-Node.js%2018%2B-brightgreen.svg)]()
 
@@ -25,7 +25,7 @@ Instead of manually crafting `curl` loops or parsing giant load-test outputs, Tr
 Works with **Claude Code**, **Cursor**, **GitHub Copilot**, **Codex**, and **OpenCode**:
 
 ```bash
-npx skills@latest add <your-github-username>/trafficlens
+npx skills@latest add hemanshulabs/trafficlens
 ```
 
 ### Option 2: Claude Code Native Plugin
