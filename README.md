@@ -1,8 +1,8 @@
-# trafficlens
+# skills
 
 A collection of reusable skills for Claude Code, Cursor, Codex CLI, and other coding agents — automated API traffic profiling, load testing, and latency bottleneck diagnosis.
 
-[![skills.sh](https://skills.sh/b/hemanshulabs/trafficlens)](https://skills.sh/hemanshulabs/trafficlens/api-traffic)
+[![skills.sh](https://img.shields.io/badge/skills.sh-hemanshulabs%2Fskills-black?logo=vercel)](https://skills.sh/hemanshulabs/skills)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Runtime: Node.js](https://img.shields.io/badge/Runtime-Node.js%2018%2B-green.svg)]()
 
@@ -22,7 +22,13 @@ A collection of reusable skills for Claude Code, Cursor, Codex CLI, and other co
 Install all skills globally to **all supported coding agents** with one command:
 
 ```bash
-npx skills add hemanshulabs/trafficlens --all -g
+npx skills add hemanshulabs/skills --all -g
+```
+
+Install a specific skill directly:
+
+```bash
+npx skills add hemanshulabs/skills@api-traffic -g
 ```
 
 Update to the latest version:
@@ -41,18 +47,18 @@ Install using [npx skills](https://skills.sh):
 
 ```bash
 # Global — available in all projects, all agents
-npx skills add hemanshulabs/trafficlens --all -g
+npx skills add hemanshulabs/skills --all -g
 
 # Project-level — current project only, all agents
-npx skills add hemanshulabs/trafficlens --all
+npx skills add hemanshulabs/skills --all
 ```
 
 ### Install to a specific agent
 
 ```bash
-npx skills add hemanshulabs/trafficlens -a claude-code -g
-npx skills add hemanshulabs/trafficlens -a codex -g
-npx skills add hemanshulabs/trafficlens -a cursor -g
+npx skills add hemanshulabs/skills -a claude-code -g
+npx skills add hemanshulabs/skills -a codex -g
+npx skills add hemanshulabs/skills -a cursor -g
 ```
 
 Other supported agents: `windsurf`, `github-copilot`, `cline`, `roo`, `gemini-cli`, `goose`, `kilo`, `augment`, `opencode`, and [40+ more](https://skills.sh).
@@ -62,13 +68,13 @@ Other supported agents: `windsurf`, `github-copilot`, `cline`, `roo`, `gemini-cl
 ### Claude Code Plugin Installation
 
 ```bash
-claude plugins install trafficlens-skills
+claude plugins install skills
 ```
 
 Or from inside an active Claude Code session:
 
 ```text
-/plugin install trafficlens-skills
+/plugin install skills
 ```
 
 ---

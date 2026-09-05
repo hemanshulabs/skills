@@ -1,13 +1,14 @@
 {
-  "name": "trafficlens",
+  "name": "skills",
   "version": "0.1.0",
-  "description": "TrafficLens: AI-powered API traffic profiling, latency bottleneck diagnosis, and performance benchmarking agent skill.",
+  "description": "A collection of reusable skills for Claude Code, Cursor, Codex, and other coding agents — API traffic profiling, load testing, and latency bottleneck diagnosis.",
   "type": "module",
-  "author": "TrafficLens Team",
+  "author": "Hemanshu Patil",
   "repository": {
     "type": "git",
-    "url": "https://github.com/hemanshulabs/trafficlens"
+    "url": "https://github.com/hemanshulabs/skills"
   },
+  "homepage": "https://skills.sh/hemanshulabs/skills",
   "license": "MIT",
   "keywords": [
     "agent-skill",

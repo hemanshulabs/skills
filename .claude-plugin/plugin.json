@@ -1,9 +1,9 @@
 {
-  "name": "trafficlens-skills",
+  "name": "skills",
   "version": "0.1.0",
-  "description": "TrafficLens: AI-powered API operations and load-testing skills. Profile endpoints, benchmark RPS/latency, diagnose slow bottlenecks, and detect caching opportunities.",
+  "description": "AI-powered API operations and load-testing skills. Profile endpoints, benchmark RPS/latency, diagnose slow bottlenecks, and detect caching opportunities.",
   "author": {
-    "name": "TrafficLens Team"
+    "name": "Hemanshu Patil"
   },
   "license": "MIT",
   "keywords": [

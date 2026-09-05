@@ -1,12 +1,12 @@
 {
-  "name": "trafficlens",
+  "name": "skills",
   "owner": {
-    "name": "TrafficLens"
+    "name": "Hemanshu Patil"
   },
-  "description": "TrafficLens agent skills for API operations, automated autocannon benchmarking, and performance diagnostics.",
+  "description": "Agent skills for API operations, automated autocannon benchmarking, and performance diagnostics.",
   "plugins": [
     {
-      "name": "trafficlens-skills",
+      "name": "skills",
       "source": "./",
       "description": "Profile and benchmark API endpoints using autocannon. Discovers routes, measures latency percentiles (p50/p95/p99), detects bottlenecks, and recommends fixes.",
       "category": "engineering",
