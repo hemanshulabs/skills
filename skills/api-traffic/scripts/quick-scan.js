@@ -5,10 +5,10 @@
  * Designed for Agent Skills (Claude Code, Cursor, Codex, Gemini CLI, OpenCode)
  * 
  * Flow:
- * 1. Verifies / installs autocannon
+ * 1. Verifies autocannon presence (no unprompted runtime installation)
  * 2. Scans project workspace to discover API routes (Express, Fastify, Next.js, NestJS, Hono, Koa)
  * 3. Detects active local server port (native fetch ping)
- * 4. Runs controlled autocannon benchmark
+ * 4. Runs controlled autocannon benchmark with zero shell interpolation
  * 5. Emits concise, high-density operational telemetry & diagnostics
  */
 
