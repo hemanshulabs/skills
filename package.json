@@ -1,7 +1,7 @@
 {
   "name": "@hemanshulabs/skills",
-  "version": "0.1.0",
-  "description": "A collection of reusable skills for Claude Code, Cursor, Codex, and other coding agents — API traffic profiling, load testing, and latency bottleneck diagnosis.",
+  "version": "0.2.0",
+  "description": "A collection of agent skills for profiling, benchmarking, and optimizing production systems — built for Claude Code, Cursor, Codex, and 40+ AI coding agents.",
   "type": "module",
   "author": "Hemanshu Patil",
   "repository": {
