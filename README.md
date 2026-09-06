@@ -208,9 +208,15 @@ Zero configuration route discovery across all modern JavaScript and TypeScript b
 ## Operational Safeguards
 
 * **Zero Runtime Dependencies**: Built purely on Node.js standard modules (`node:fs`, `node:path`, `node:child_process`). Runs on any machine with Node.js 18+.
-* **Safe Local Concurrency**: Default load tests run with lightweight concurrency (`10 connections`, `10 seconds`) to protect local databases and services.
+* **Shell-Free Execution**: All process execution uses `spawnSync` with `{ shell: false }` and discrete argument arrays. Zero calls to `execSync` or any shell-interpolating API. No shell interpreter (`cmd.exe`, `sh`, `bash`) is ever invoked.
+* **Strict Route Sanitization**: All route paths extracted from project source files are validated at the ingestion boundary via a whitelist regex that rejects shell metacharacters (`` ` ``, `$`, `;`, `&`, `|`, etc.), path traversal, and control characters.
+* **No Automatic Package Installation**: The skill never installs packages at runtime. If `autocannon` is not already installed, execution stops with clear manual installation instructions.
+* **SSRF Prevention**: Benchmark target URLs are constructed via `new URL()` with strict origin-match validation. Only `http:` and `https:` protocols are permitted.
 * **Strict Secret Redaction**: All Authorization tokens, session cookies, passwords, and sensitive keys are automatically masked as `<REDACTED>`.
+* **Safe Local Concurrency**: Default load tests run with lightweight concurrency (`10 connections`, `10 seconds`) to protect local databases and services.
 * **Read-Only Inspection**: Does not alter your application code without human confirmation.
+
+For full details, see [SECURITY.md](SECURITY.md).
 
 ---
 
